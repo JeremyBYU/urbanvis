@@ -1,0 +1,5 @@
+*
+!.gitignore
+!box.json
+!custom.js
+!model.json
