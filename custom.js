@@ -42,8 +42,11 @@ Promise.all([loaded_quad, loaded_box, loaded_texture]).then(([quad, box, box_tex
   // make the controls focus on the quad group
   app.camera.position.set(-2000, -2000, 800);
   app.controls.target = window.quad_group.position
-  app.controls.dollyIn(1.1)
+  // Dirty the controller so that theta, phi, and offset states are updated and set. 
+  // Timeout necessary because you cant set the more than one state at a time!
   app.controls.rotateLeft(.001)
+  setTimeout(() => app.controls.dollyIn(1.1), 100 )
+  
 
 })
 
