@@ -1,5 +1,8 @@
 # Urban Vis
 
+This project demonstrates how one can construct a three dimensional world using QGIS. It also comes with a custom script script that allows you import 3D models and script
+'cinematrograhy' scenarios, allowing one to control the camera and the environment.  The specific scenario presented is for a UAS failure.
+
 
 ## Cinematography Scripting
 

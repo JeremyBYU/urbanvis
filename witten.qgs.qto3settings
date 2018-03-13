@@ -1,4 +1,7 @@
 {
+  "CTRL": {
+    "comboBox_Controls": "OrbitControls.js"
+  }, 
   "DEM": {
     "checkBox_Clip": true, 
     "checkBox_Frame": false, 
@@ -70,10 +73,10 @@
       "styleWidget5": {}, 
       "visible": true
     }, 
-    "witten_buildings_copy20180311115905687": {
+    "witten_buildings_color_simple_copy20180312231929049": {
       "checkBox_Clip": true, 
       "checkBox_ExportAttrs": false, 
-      "comboBox_Label": null, 
+      "comboBox_Label": 6, 
       "comboBox_ObjectType": 0, 
       "heightWidget": {
         "comboData": 2, 
@@ -84,7 +87,48 @@
       "labelHeightWidget": {
         "comboData": 3, 
         "comboText": "Height from top", 
-        "editText": "103.033780098", 
+        "editText": "5", 
+        "type": 6
+      }, 
+      "radioButton_IntersectingFeatures": true, 
+      "styleWidget0": {
+        "comboData": 1, 
+        "comboText": "Feature style", 
+        "editText": "", 
+        "type": 2
+      }, 
+      "styleWidget1": {
+        "comboData": 1, 
+        "comboText": "Feature style", 
+        "editText": "", 
+        "type": 5
+      }, 
+      "styleWidget2": {
+        "comboData": 103, 
+        "comboText": "\"height\"", 
+        "editText": "2.5", 
+        "type": 1
+      }, 
+      "styleWidget3": {}, 
+      "styleWidget4": {}, 
+      "styleWidget5": {}, 
+      "visible": true
+    }, 
+    "witten_buildings_copy20180311115905687": {
+      "checkBox_Clip": true, 
+      "checkBox_ExportAttrs": false, 
+      "comboBox_Label": 25, 
+      "comboBox_ObjectType": 0, 
+      "heightWidget": {
+        "comboData": 2, 
+        "comboText": "Relative to DEM", 
+        "editText": "0", 
+        "type": 4
+      }, 
+      "labelHeightWidget": {
+        "comboData": 3, 
+        "comboText": "Height from top", 
+        "editText": "10", 
         "type": 6
       }, 
       "radioButton_IntersectingFeatures": true, 
