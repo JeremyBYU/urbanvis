@@ -2,6 +2,8 @@
 let obj_loader = new THREE.ObjectLoader();
 let texture_loader = new THREE.TextureLoader();
 const SPEED = 0.01;
+const STARTING_POSTION = [-657, -35.6, 57]
+
 
 function around(val1, val2, eps = 0.05) {
   val1 = typeof val1 === "number" ? val1 : val1.length();
@@ -239,7 +241,8 @@ function load_models() {
 
     // Create the Quadrotor Group: quad, box, and line
     quad_group = new THREE.Group();
-    quad_group.position.set(-938, -510, 117.8);
+    // quad_group.position.set(-938, -510, 117.8);
+    quad_group.position.set.apply(quad_group.position,STARTING_POSTION)
     quad_group.add(quad, box, line, db, danger);
     // add to scene
     app.scene.add(quad_group);

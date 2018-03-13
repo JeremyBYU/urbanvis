@@ -27,7 +27,7 @@
     "spinBox_demtransp": 0, 
     "visible": false
   }, 
-  "OutputFilename": "C:/Users/Jerem/Documents/GIS DataBase/Witten/threejs/witten.html", 
+  "OutputFilename": "C:/Users/Jerem/Documents/GIS DataBase/Witten/docs/index.html", 
   "POLYGON": {
     "witten_buildings20180310231352914": {
       "checkBox_Clip": true, 
