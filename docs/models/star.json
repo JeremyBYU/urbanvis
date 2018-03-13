@@ -1,0 +1,35 @@
+{
+	"metadata": {
+		"version": 4.5,
+		"type": "Object",
+		"generator": "Object3D.toJSON"
+	},
+	"geometries": [
+		{
+			"uuid": "7D5AB12D-55D5-46BE-91F4-0D88E60EED3A",
+			"type": "IcosahedronGeometry",
+			"radius": 1,
+			"detail": 0
+		}],
+	"materials": [
+		{
+			"uuid": "4FD4480E-9A83-45FC-9772-54A8F5966963",
+			"type": "MeshPhongMaterial",
+			"name": "star",
+			"color": 65408,
+			"emissive": 0,
+			"specular": 1118481,
+			"shininess": 30,
+			"depthFunc": 3,
+			"depthTest": true,
+			"depthWrite": true
+		}],
+	"object": {
+		"uuid": "2FDF728C-9C9D-4318-8E61-43D2804CE8F6",
+		"type": "Mesh",
+		"name": "Icosahedron",
+		"matrix": [3,0,0,0,0,3,0,0,0,0,3,0,-0.07139,0.898339,0.138932,1],
+		"geometry": "7D5AB12D-55D5-46BE-91F4-0D88E60EED3A",
+		"material": "4FD4480E-9A83-45FC-9772-54A8F5966963"
+	}
+}
