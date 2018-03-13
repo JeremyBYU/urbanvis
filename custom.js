@@ -1,3 +1,4 @@
+// @ts-check
 let obj_loader = new THREE.ObjectLoader();
 let texture_loader = new THREE.TextureLoader();
 const SPEED = 0.01;
@@ -7,21 +8,33 @@ function around(val1, val2, eps = 0.05) {
   return Math.abs(val1 - val2) < eps;
 }
 
-// Make this global
+// Make this global and set to auto update
+/**
+*  @type {object}
+*/
+var app, THREE, quad_group
+
 app = Q3D.application;
 app.scene.autoUpdate = true;
 
+
+/**
+ * This class created Cinema Events. Events that modify the camera or the environments
+ * 
+ * @class CinemaEvents
+ */
 class CinemaEvents {
   constructor({
     name = "UK",
     variable = "phi",
     until = 1,
     amt = 0.01,
-    pre_event,
+    pre_event = null,
     start_offset = 0,
     end_timer = null,
     eps = 0.05,
-    execute = null
+    customExec = null,
+    customCheck = null
   } = {}) {
     this.finished = false;
     this.active = false;
@@ -34,6 +47,8 @@ class CinemaEvents {
     this.start_offset = start_offset;
     this.end_timer = end_timer;
     this.eps = eps;
+    this.customExec = customExec
+    this.customCheck = customCheck
 
     this.cameraVars = ["offset", "theta", "phi"];
     console.log(this);
@@ -62,8 +77,15 @@ class CinemaEvents {
     }
   }
   execute() {
-    if (this.cameraVars.includes(this.variable)) {
-      this.moveCamera();
+    if (this.customExec) {
+      this.customExec()
+      if (this.customCheck()) {
+        this.finished_callback()
+      } 
+    } else {
+      if (this.cameraVars.includes(this.variable)) {
+        this.moveCamera();
+      }
     }
   }
   finished_callback() {
@@ -100,7 +122,7 @@ let cinema_timings = {
     new CinemaEvents({
       name: "initial_zoom",
       variable: "offset",
-      amt: 1.05,
+      amt: 1.02,
       until: 3.7,
       eps: 1
     }),
@@ -111,51 +133,21 @@ let cinema_timings = {
       until: .94
     }),
     new CinemaEvents({
+      name: "activate_danger",
+      pre_event: "initial_zoom",
+      customExec: () => {quad_group.children[4].visible = true},
+      customCheck: () => true,
+      start_offset: 5000
+    }),
+    new CinemaEvents({
       name: "first_rotate",
       variable: "theta",
       amt: 0.01,
       until: 3.1,
-      pre_event: "initial_zoom",
-      start_offset: 2000
+      pre_event: "activate_danger",
+      start_offset: 5000
     })
   ]
-  // events: [
-  //   {
-  //     name: "initial_zoom",
-  //     pre_event: undefined,
-  //     start_offset: 0,
-  //     finished: false,
-  //     active: false,
-  //     execute: function() {
-  //       // check distance between camera and quad
-  //       if (app.controls.offset.length() < 3.7) {
-  //         this.finished_callback();
-  //       }
-  //       app.controls.dollyIn(1.05);
-  //     },
-  //     finished_callback: function() {
-  //       this.active = false;
-  //       this.finished = true;
-  //     }
-  //   },
-  //   {
-  //     name: "auto_rotate",
-  //     pre_event: "initial_zoom",
-  //     start_offset: 1000,
-  //     finished: false,
-  //     active: false,
-  //     execute: function() {
-  //       if (around(app.controls.theta, 3.1)) {
-  //         this.finished_callback();
-  //       }
-  //       app.controls.rotateLeft(0.01);
-  //     },
-  //     finished_callback: function() {
-  //       this.active = false;
-  //       this.finished = true;
-  //     }
-  //   }
-  // ]
 };
 // Modify DAT GUI to allow scripting the camera control
 addCinemaGUI();
@@ -170,18 +162,18 @@ load_models();
  * @returns
  */
 function promise_object_loader(filename, obj = true) {
-  loader = obj ? obj_loader : texture_loader;
+  let loader = obj ? obj_loader : texture_loader;
   return new Promise(
     (res, rej) => {
       loader.load(filename, obj => {
         res(obj);
+      },
+      progress => {},
+      err => {
+        console.log(err);
       });
-    },
-    progress => {},
-    err => {
-      console.log(err);
-    }
-  );
+    })
+
 }
 
 function load_models() {
@@ -206,14 +198,17 @@ function load_models() {
     box.position.set(0, 0, -0.4);
 
     // create connecting line between box and drone
-    let material = new THREE.LineBasicMaterial({
-      color: 0x484848,
-      linewidth: 10
-    });
-    let geometry = new THREE.Geometry();
-    geometry.vertices.push(box.position);
-    geometry.vertices.push(quad.position);
-    let line = new THREE.Line(geometry, material);
+
+    let line = createLine([box.position, quad.position])
+
+    // let material = new THREE.LineBasicMaterial({
+    //   color: 0x484848,
+    //   linewidth: 10
+    // });
+    // let geometry = new THREE.Geometry();
+    // geometry.vertices.push(box.position);
+    // geometry.vertices.push(quad.position);
+    // let line = new THREE.Line(geometry, material);
 
     // Create the DB Mesh, set invisible initially
     db.position.set(0, 0, 0.2);
@@ -221,12 +216,12 @@ function load_models() {
 
     // Create the danger sign mesh
     danger.position.set(0, 0, 0.5);
-    // danger.visible = false
+    danger.visible = false
     // danger.translateX(-1)
 
     // Create the Quadrotor Group: quad, box, and line
-    window.quad_group = new THREE.Group();
-    window.quad_group.position.set(-938, -510, 117.8);
+    quad_group = new THREE.Group();
+    quad_group.position.set(-938, -510, 117.8);
     quad_group.add(quad, box, line, db, danger);
     // add to scene
     app.scene.add(quad_group);
@@ -240,6 +235,20 @@ function load_models() {
     // Everything is now setup to run our animate function
     window.userAnimateFunction = animateFunction;
   });
+}
+
+function createLine(vertices, lineWidth=.02, color=0x000000) {
+  let lineGeom = new THREE.Geometry()
+  vertices.forEach((vertex) => lineGeom.vertices.push({...vertex}))
+
+  let line = new MeshLine()
+  line.setGeometry(lineGeom)
+  let color_ = new THREE.Color( color );
+  let material = new MeshLineMaterial({color: color_, lineWidth});
+  let mesh = new THREE.Mesh( line.geometry, material ); // this syntax could definitely be improved!
+  return mesh
+
+
 }
 
 // Add command to DAT GUI for scripting the control of the camera
