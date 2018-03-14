@@ -60,6 +60,9 @@ THREE.OrbitControls = function ( object, domElement ) {
 	this.domElement = ( domElement !== undefined ) ? domElement : document;
 
 	// API
+	this.offset = new THREE.Vector3()
+	this.phi = 0
+	this.theta = 0
 
 	// Set to false to disable this control
 	this.enabled = true;
