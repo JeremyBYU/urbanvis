@@ -20,12 +20,13 @@ const STARTING_POSITION = [pos.x, pos.y, pos.z]
 const RED_BUILDINGS_LAYER = 1;
 const BUILDING_COST_LAYER = 2;
 const ALL_BUILDINGS_LAYER = 3;
-const DEFAULT_DELAY = 100;
+const DEFAULT_DELAY = 200;
 const STAR_HEIGHT = 2;
 
 let path_vectors = [];
 let path_geometries = [];
 let star_group = new THREE.Group();
+let sphere_group = new THREE.Group();
 
 app = Q3D.application;
 app.scene.autoUpdate = true;
@@ -145,15 +146,22 @@ let cinema_timings = {
       name: "draw_paths",
       pre_event: "show_goals",
       customExec: function() {
+        if (this.counter === 0){
+          sphere_group.visible = true
+        }
         this.counter = this.counter + 2;
-        path_geometries.forEach(line => {
+        path_geometries.forEach((line, index) => {
+          // Set line color
+          const positions = line.geometry.attributes.position.array;
+          const end_line_pos = [positions[this.counter * 3], positions[this.counter * 3 + 1], positions[this.counter * 3 + 2]]
+          sphere_group.children[index].position.set(end_line_pos[0], end_line_pos[1], end_line_pos[2])
           line.geometry.setDrawRange(0, this.counter);
         });
       },
       customCheck: function() {
         return this.counter > MAX_POINTS - 5;
       },
-      start_offset: DEFAULT_DELAY
+      start_offset: 1000
     })
   ]
 };
@@ -174,7 +182,7 @@ function load_models() {
   let loaded_danger = promise_object_loader("models/danger.json", OBJ_LOADER);
   let promise_star = promise_object_loader("models/star.json", OBJ_LOADER);
   let promise_paths = promise_object_loader("models/paths.json", FILE_LOADER);
-
+  let promise_sphere = promise_object_loader("models/sphere.json", OBJ_LOADER);
   Promise.all([
     loaded_quad,
     loaded_box,
@@ -182,8 +190,9 @@ function load_models() {
     loaded_db,
     loaded_danger,
     promise_star,
-    promise_paths
-  ]).then(([quad, box, box_texture, db, danger, star, path_resp]) => {
+    promise_paths,
+    promise_sphere
+  ]).then(([quad, box, box_texture, db, danger, star, path_resp, sphere]) => {
     // update box material to amazon prime picture
     box.material = new THREE.MeshPhongMaterial({
       map: box_texture,
@@ -229,6 +238,7 @@ function load_models() {
     });
     addPathsToScene(path_vectors, 0);
     addStars(path_vectors, star);
+    addSpheres(path_vectors, sphere)
     star_group.visible = false;
     // Dirty the controller so that theta, phi, and offset states are updated and set.
     app.controls.rotateLeft(0.001);
@@ -256,6 +266,17 @@ function addStars(path_vectors, star_template) {
     star_group.add(clone_star);
   });
   app.scene.add(star_group);
+}
+
+function addSpheres(path_vectors, sphere_template) {
+  path_vectors.forEach(path => {
+    let start_vec = path[0];
+    let clone_sphere = sphere_template.clone();
+    clone_sphere.position.set(start_vec.x, start_vec.y, start_vec.z);
+    sphere_group.add(clone_sphere);
+  });
+  app.scene.add(sphere_group);
+  sphere_group.visible = false
 }
 
 // Add command to DAT GUI for scripting the control of the camera
