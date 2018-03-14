@@ -6,24 +6,27 @@
  */
 var app, THREE, quad_group, Q3D;
 
+// These are loaders from THREEJS to load objects, textures, or general files
 const OBJ_LOADER = new THREE.ObjectLoader();
 const TEXTURE_LOADER = new THREE.TextureLoader();
 const FILE_LOADER = new THREE.FileLoader();
 
-// const STARTING_POSITION = [-896.42, -359, 116]
+// These are the starting coordinates of the UAS in spherical and THREEJS coordinate sytems
 const STARTING_POSITION_SPHERICAL = [7.33364, 51.436723, 133.67];
 let pos = app.project.toThreeJSCoordinates.apply(
   app.project,
   proj4(app.project.proj).forward(STARTING_POSITION_SPHERICAL)
 );
-const STARTING_POSITION = [pos.x, pos.y, pos.z]
-const RED_BUILDINGS_LAYER = 1;
-const BUILDING_COST_LAYER = 2;
-const ALL_BUILDINGS_LAYER = 3;
-const DEFAULT_DELAY = 200;
-const STAR_HEIGHT = 2;
+const STARTING_POSITION = [pos.x, pos.y, pos.z];
+// These are general constants
+const RED_BUILDINGS_LAYER = 1;  // Index of red buildings layer
+const BUILDING_COST_LAYER = 2;  // Index of gradient blue buildings layer
+const ALL_BUILDINGS_LAYER = 3;  // Index of all buildings layer
+const DEFAULT_DELAY = 200;      // A default delay (in ms) used in Cinematic Events
+const STAR_HEIGHT = 2;          // Height in Meters of the "star" above a goal
 
-let path_vectors = [];
+// Just some globals used when creating paths, starts, and spheres
+let path_vectors = [];          
 let path_geometries = [];
 let star_group = new THREE.Group();
 let sphere_group = new THREE.Group();
@@ -146,15 +149,23 @@ let cinema_timings = {
       name: "draw_paths",
       pre_event: "show_goals",
       customExec: function() {
-        if (this.counter === 0){
-          sphere_group.visible = true
+        if (this.counter === 0) {
+          sphere_group.visible = true;
         }
         this.counter = this.counter + 2;
         path_geometries.forEach((line, index) => {
           // Set line color
           const positions = line.geometry.attributes.position.array;
-          const end_line_pos = [positions[this.counter * 3], positions[this.counter * 3 + 1], positions[this.counter * 3 + 2]]
-          sphere_group.children[index].position.set(end_line_pos[0], end_line_pos[1], end_line_pos[2])
+          const end_line_pos = [
+            positions[this.counter * 3],
+            positions[this.counter * 3 + 1],
+            positions[this.counter * 3 + 2]
+          ];
+          sphere_group.children[index].position.set(
+            end_line_pos[0],
+            end_line_pos[1],
+            end_line_pos[2]
+          );
           line.geometry.setDrawRange(0, this.counter);
         });
       },
@@ -172,6 +183,7 @@ addCinemaGUI();
 load_models();
 
 function load_models() {
+  // Here we are asynchronously loading all the models, textures, and files that we will need
   let loaded_quad = promise_object_loader("models/uas.json", OBJ_LOADER);
   let loaded_box = promise_object_loader("models/box.json", OBJ_LOADER);
   let loaded_texture = promise_object_loader(
@@ -238,8 +250,7 @@ function load_models() {
     });
     addPathsToScene(path_vectors, 0);
     addStars(path_vectors, star);
-    addSpheres(path_vectors, sphere)
-    star_group.visible = false;
+    addSpheres(path_vectors, sphere);
     // Dirty the controller so that theta, phi, and offset states are updated and set.
     app.controls.rotateLeft(0.001);
     app.controls.offset
@@ -266,6 +277,7 @@ function addStars(path_vectors, star_template) {
     star_group.add(clone_star);
   });
   app.scene.add(star_group);
+  star_group.visible = false;
 }
 
 function addSpheres(path_vectors, sphere_template) {
@@ -276,7 +288,7 @@ function addSpheres(path_vectors, sphere_template) {
     sphere_group.add(clone_sphere);
   });
   app.scene.add(sphere_group);
-  sphere_group.visible = false
+  sphere_group.visible = false;
 }
 
 // Add command to DAT GUI for scripting the control of the camera
