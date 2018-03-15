@@ -8,13 +8,13 @@
     <layer-tree-layer expanded="1" providerKey="ogr" checked="Qt::Checked" id="region_witten20180311111828586" source="C:/Users/Jerem/Documents/GIS DataBase/Witten/data/region_witten.shp" name="region_witten">
       <customproperties/>
     </layer-tree-layer>
-    <layer-tree-layer expanded="1" providerKey="ogr" checked="Qt::Unchecked" id="Refactored20180312231813356" source="C:\Users\Jerem\.qgis2\\processing\outputs\temp.shp|layerid=0" name="witten-buildings-color-simple">
+    <layer-tree-layer expanded="1" providerKey="ogr" checked="Qt::Unchecked" id="Refactored20180312231813356" source="C:/Users/Jerem/.qgis2/processing/outputs/temp.shp" name="witten-buildings-color-simple">
       <customproperties/>
     </layer-tree-layer>
     <layer-tree-layer expanded="0" providerKey="ogr" checked="Qt::Checked" id="witten_buildings_copy20180311115905687" source="C:/Users/Jerem/Documents/GIS DataBase/Witten/data/witten-buildings.sqlite" name="witten-buildings-color">
       <customproperties/>
     </layer-tree-layer>
-    <layer-tree-layer expanded="0" providerKey="ogr" checked="Qt::Checked" id="witten_buildings_color_simple_copy20180312231929049" source="C:\Users\Jerem\.qgis2\\processing\outputs\temp.shp|layerid=0|subset=&quot;roof_shape&quot; = 'flat'" name="witten-buildings-color-simple copy">
+    <layer-tree-layer expanded="0" providerKey="ogr" checked="Qt::Checked" id="witten_buildings_color_simple_copy20180312231929049" source="C:/Users/Jerem/.qgis2/processing/outputs/temp.shp|layerid=0|subset=&quot;roof_shape&quot; = 'flat'" name="witten-buildings-color-simple copy">
       <customproperties/>
     </layer-tree-layer>
     <layer-tree-layer expanded="1" providerKey="ogr" checked="Qt::Unchecked" id="witten_buildings20180310231352914" source="C:/Users/Jerem/Documents/GIS DataBase/Witten/data/witten-buildings.sqlite" name="witten-buildings">
@@ -31,10 +31,10 @@
   <mapcanvas>
     <units>meters</units>
     <extent>
-      <xmin>815968.48528551135677844</xmin>
-      <ymin>6698096.64037747494876385</ymin>
-      <xmax>818850.55500774655956775</xmax>
-      <ymax>6700552.5782442819327116</ymax>
+      <xmin>816007.82536076428368688</xmin>
+      <ymin>6698172.85354090854525566</ymin>
+      <xmax>818889.89508299948647618</xmax>
+      <ymax>6700628.79140771552920341</ymax>
     </extent>
     <rotation>0</rotation>
     <projections>1</projections>
@@ -117,7 +117,7 @@
   <projectlayers>
     <maplayer simplifyAlgorithm="0" minimumScale="0" maximumScale="1e+08" simplifyDrawingHints="1" minLabelScale="0" maxLabelScale="1e+08" simplifyDrawingTol="1" readOnly="0" geometry="Polygon" simplifyMaxScale="1" type="vector" hasScaleBasedVisibilityFlag="0" simplifyLocal="1" scaleBasedLabelVisibilityFlag="0">
       <id>Refactored20180312231813356</id>
-      <datasource>../../../.qgis2/processing/outputs/temp.shp|layerid=0</datasource>
+      <datasource>../../../.qgis2/processing/outputs/temp.shp</datasource>
       <keywordList>
         <value></value>
       </keywordList>
@@ -212,7 +212,7 @@
         <multilineenabled fieldname="" on=""/>
         <selectedonly on=""/>
       </labelattributes>
-      <annotationform></annotationform>
+      <annotationform>.</annotationform>
       <aliases>
         <alias field="id" index="0" name=""/>
         <alias field="osm_id" index="1" name=""/>
@@ -237,10 +237,10 @@
           <column width="-1" hidden="1" type="actions"/>
         </columns>
       </attributetableconfig>
-      <editform></editform>
+      <editform>.</editform>
       <editforminit/>
       <editforminitcodesource>0</editforminitcodesource>
-      <editforminitfilepath></editforminitfilepath>
+      <editforminitfilepath>.</editforminitfilepath>
       <editforminitcode><![CDATA[]]></editforminitcode>
       <featformsuppress>0</featformsuppress>
       <editorlayout>generatedlayout</editorlayout>
@@ -1601,6 +1601,7 @@ def my_form_open(dialog, layer, feature):
       <SingleCategoryDiagramRenderer diagramType="Histogram" sizeLegend="0" attributeLegend="1">
         <DiagramCategory penColor="#000000" labelPlacementMethod="XHeight" penWidth="0" diagramOrientation="Up" sizeScale="0,0,0,0,0,0" minimumSize="0" barWidth="5" penAlpha="255" maxScaleDenominator="1e+08" backgroundColor="#ffffff" transparency="0" width="15" scaleDependency="Area" backgroundAlpha="255" angleOffset="1440" scaleBasedVisibility="0" enabled="0" height="15" lineSizeScale="0,0,0,0,0,0" sizeType="MM" lineSizeType="MM" minScaleDenominator="inf">
           <fontProperties description="MS Shell Dlg 2,8.25,-1,5,50,0,0,0,0,0" style=""/>
+          <attribute field="" color="#000000" label=""/>
         </DiagramCategory>
         <symbol alpha="1" clip_to_extent="1" type="marker" name="sizeSymbol">
           <layer pass="0" class="SimpleMarker" locked="0">
