@@ -26,7 +26,7 @@ const {
   loadNumpy,
 } = require("./util");
 
-const {plan, createPlanner} = require('./planning')
+const {plan, createPlanner, startHandler} = require('./planning')
 
 // These are loaders from THREEJS to load objects, textures, or general files
 const OBJ_LOADER = new THREE.ObjectLoader();
@@ -34,7 +34,8 @@ const TEXTURE_LOADER = new THREE.TextureLoader();
 const FILE_LOADER = new THREE.FileLoader();
 
 // These are the starting coordinates of the UAS in spherical and THREEJS coordinate sytems
-const STARTING_POSITION_SPHERICAL = [7.33364, 51.436723, 133.67];
+// const STARTING_POSITION_SPHERICAL = [7.33364, 51.436723, 133.67];
+const STARTING_POSITION_SPHERICAL = [7.33364, 51.436723, 105];
 let pos = app.project.toThreeJSCoordinates.apply(
   app.project,
   proj4(app.project.proj).forward(STARTING_POSITION_SPHERICAL)
@@ -55,6 +56,8 @@ var path_vectors = [];
 var path_geometries = [];
 var star_group = new THREE.Group();
 var sphere_group = new THREE.Group();
+
+global.star_group = star_group
 
 
 
@@ -252,6 +255,7 @@ async function load_models() {
     quad_group.position.set.apply(quad_group.position, STARTING_POSITION);
     quad_group.add(quad, box, line, db, danger);
     quad_group.scale.set(app.project.scale, app.project.scale, app.project.scale)
+    global.quad_group = quad_group // Set a global variable, ugly but helps out quite a bit
     // add to scene
     app.scene.add(quad_group);
     // make the controls focus on the quad group
@@ -289,9 +293,8 @@ async function load_models() {
     // Everything is now setup to run our animate function.
     window.userAnimateFunction = animateFunction;
 
-    loadNumpy('./custom/data/cost_map.npy').then((data) => {
-      console.log(data)
-      createPlanner(data, STARTING_POSITION_SPHERICAL)
+    loadNumpy('./custom/data/total_bin_mesh_res002.npy').then((data) => {
+      global.maze =data // set global variable
     })
   });
 }
@@ -333,9 +336,13 @@ function addCinemaGUI() {
 
 
   var folder = scope.gui.addFolder("Path Planner");
-  scope.parameters.planner = { speed: 1, active: false};
+  scope.parameters.planner = { speed: 1, active: false, start: startHandler, weight:1, heuristic: "manhattan", showNodes:true };
   
-  folder.add(scope.parameters.planner, "speed", 0, 20, 1).name("Speed");
+  folder.add(scope.parameters.planner, "speed", 0, 100, 1).name("Speed");
+  folder.add(scope.parameters.planner, "weight", 0, 10, 1).name("Avoid Obstacles");
+  folder.add(scope.parameters.planner, "heuristic", ["manhattan", "euclidean"]).name("Heuristic");
+  folder.add(scope.parameters.planner, "showNodes").name("Show Nodes");
+  folder.add(scope.parameters.planner, "start").name("Initialize");
   folder.add(scope.parameters.planner, "active").name("Active");
   // folder.add(scope.parameters.cmd, 'wf').name('Wireframe Mode').onChange(Q3D.application.setWireframeMode);
 }
@@ -360,29 +367,44 @@ function animateFunction() {
 /// <reference path="./asyncastar.d.ts" />
 const AsyncAStar = require("@jeremybyu/asyncastar");
 
-const THREE = global.THREE
-const Q3D = global.Q3D
-const proj4 = global.proj4
+const {addPathsToScene} = require('./util')
 
-
-const OPEN_NODE = new THREE.MeshPhongMaterial( {color: 0x4169E1, opacity: .4, transparent: true} );
-const CLOSED_NODE = new THREE.MeshPhongMaterial( {color: 0x808080, opacity: .7, transparent: true} );
-const GOAL_NODE = new THREE.MeshPhongMaterial( {color: 0x008000} );
-
-
+const THREE = global.THREE;
+const Q3D = global.Q3D;
+const proj4 = global.proj4;
 const app = Q3D.application;
 
-const GOAL_SPHERICAL = [7.3338, 51.4365, 135]
-const GOAL_PROJECTED = proj4(app.project.proj).forward(GOAL_SPHERICAL)
-  let pos = app.project.toThreeJSCoordinates.apply(
-    app.project,
-    proj4(app.project.proj).forward(GOAL_SPHERICAL)
-  );
-const GOAL_THREEJS = app.project.toThreeJSCoordinates.apply(app.project, GOAL_PROJECTED);
+const OPEN_NODE = new THREE.MeshPhongMaterial({
+  color: 0x4169e1,
+  opacity: 0.4,
+  transparent: true
+});
+const CLOSED_NODE = new THREE.MeshPhongMaterial({
+  color: 0x808080,
+  opacity: 0.7,
+  transparent: true
+});
+const PATH_NODE = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+const GOAL_NODE = new THREE.MeshPhongMaterial({ color: 0x008000 });
+
+const SPHERE_GEOMETRY = new THREE.SphereGeometry(1 * app.project.scale, 32, 32);
+
+
+// 51.4363, 7.3345, Elev. 101.57
+const GOAL_SPHERICAL = [7.3345, 51.4363, 115];
+const GOAL_PROJECTED = proj4(app.project.proj).forward(GOAL_SPHERICAL);
+let pos = app.project.toThreeJSCoordinates.apply(
+  app.project,
+  proj4(app.project.proj).forward(GOAL_SPHERICAL)
+);
+const GOAL_THREEJS = app.project.toThreeJSCoordinates.apply(
+  app.project,
+  GOAL_PROJECTED
+);
 
 /** @type {AsyncAstar<T>} */
-let AsyncPlanner 
-const NODES = new Map()
+let AsyncPlanner;
+const NODES = new Map();
 
 const MAZE_META = {
   nrows: 644,
@@ -398,90 +420,194 @@ const MAZE_META = {
 
 function bound(a, lo, hi) {
   if (a < lo) {
-    return lo
-  } else if(a > hi) {
-    return hi
+    return lo;
+  } else if (a > hi) {
+    return hi;
   }
-  return a
+  return a;
 }
 
-function convertCell(coord, toCell = true, meta=MAZE_META) {
+function convertCell(coord, toCell = true, meta = MAZE_META) {
   if (toCell) {
-    let xMeters = coord[0] - meta.xmin
-    let yMeters = coord[1] - meta.ymin
-    let zMeters = coord[2] - meta.zmin
+    let xMeters = coord[0] - meta.xmin;
+    let yMeters = coord[1] - meta.ymin;
+    let zMeters = coord[2] - meta.zmin;
 
-    let j = bound(Math.floor((xMeters - meta.xres / 2000) / meta.xres), 0, meta.ncols - 1)
-    let i = bound(Math.floor((yMeters - meta.yres / 2000) / meta.yres), 0, meta.rows - 1)
-    let k = bound(Math.floor((zMeters - meta.zres / 2000) / meta.zres), 0, meta.nslices - 1)
+    let j = bound(
+      Math.floor((xMeters - meta.xres / 2000) / meta.xres),
+      0,
+      meta.ncols - 1
+    );
+    let i = bound(
+      Math.floor((yMeters - meta.yres / 2000) / meta.yres),
+      0,
+      meta.rows - 1
+    );
+    let k = bound(
+      Math.floor((zMeters - meta.zres / 2000) / meta.zres),
+      0,
+      meta.nslices - 1
+    );
 
-    return [i, j, k]
+    return [i, j, k];
   } else {
-    let xMeters = coord[1] * meta.xres + meta.xmin
-    let yMeters = coord[0] * meta.yres + meta.ymin
-    let zMeters = coord[2] * meta.zres + meta.zmin
+    let xMeters = coord[1] * meta.xres + meta.xmin;
+    let yMeters = coord[0] * meta.yres + meta.ymin;
+    let zMeters = coord[2] * meta.zres + meta.zmin;
 
-    return [xMeters, yMeters, zMeters]
+    return [xMeters, yMeters, zMeters];
   }
 }
 
-function createCircle(data, material=OPEN_NODE) {
-  let pos_projected = convertCell([data.x, data.y, data.z], false)
-  let pos_3js = app.project.toThreeJSCoordinates.apply(app.project, pos_projected);
-  let geometry = new THREE.SphereGeometry( 1 * app.project.scale, 32, 32 );
-  let sphere = new THREE.Mesh( geometry, material );
+global.convertCell = convertCell;
+
+function createCircle(node, material = OPEN_NODE) {
+  let data = node.data ? node.data: node
+  // console.log('create circle')
+  // return
+  let pos_projected = convertCell([data.x, data.y, data.z], false);
+  let pos_3js = app.project.toThreeJSCoordinates.apply(
+    app.project,
+    pos_projected
+  );
+  let geometry = SPHERE_GEOMETRY
+  let sphere = new THREE.Mesh(geometry, material);
   sphere.position.set(pos_3js.x, pos_3js.y, pos_3js.z);
-  app.scene.add(sphere)
-  NODES.set(data.toString(), sphere)
+  app.scene.add(sphere);
+  NODES.set(data.toString(), sphere);
 }
 
-function updateCircle(data, color=0x808080) {
-  const sphere = NODES.get(data.toString())
+function updateCircle(node, color = 0x808080) {
+  const data = node.data
+  // console.log('update circle')
+  // return
+  const sphere = NODES.get(data.toString());
   if (sphere) {
-    sphere.material = CLOSED_NODE
+    sphere.material = CLOSED_NODE;
   }
 }
 
+/**
+ *
+ *
+ * @param {Array} path
+ */
+function createPath(path) {
+  path.forEach(node => {
+    const sphere = NODES.get(node.data.toString());
+    if (sphere) {
+      sphere.material = PATH_NODE;
+    }
+  });
+}
+
+/**
+ *
+ *
+ * @param {Array} path
+ */
+function createLinePath(path) {
+  let vec_array = [];
+  let path_vectors = path.map(node => {
+    let pos_projected = convertCell([node.data.x, node.data.y, node.data.z], false);
+    let three_c = app.project.toThreeJSCoordinates.apply(
+      app.project,
+      pos_projected
+    );
+    return new THREE.Vector3(three_c.x, three_c.y, three_c.z)
+  });
+  vec_array.push(path_vectors)
+  global.path_geometries = addPathsToScene(vec_array, .99);
+}
+
+// app.project.toMapCoordinates(point.x, point.y, point.z);
+// var lonLat = proj4(app.project.proj).inverse([pt.x, pt.y]);
+
+function threeJStoGPS(point) {
+  let pt = app.project.toMapCoordinates(point.x, point.y, point.z);
+  let lonLat = proj4(app.project.proj).inverse([pt.x, pt.y]);
+  lonLat.push(pt.z);
+  return lonLat;
+}
 
 function gpsToCell(gps) {
-  const projected = proj4(app.project.proj).forward(gps)
-  console.log(gps, projected)
-  const cell = convertCell(projected, true, MAZE_META)
-  return cell
+  const projected = proj4(app.project.proj).forward(gps);
+  console.log(gps, projected);
+  const cell = convertCell(projected, true, MAZE_META);
+  return cell;
 }
 
-function createPlanner(map, start, goal=GOAL_SPHERICAL) {
-  // get quad position and map to projecte coordinates, then to cell
-  // goal is always in gps, convert to cell
-  global.map = map
-  let startCell = gpsToCell(start)
-  let goalCell = gpsToCell(goal)
-  console.log(startCell, goalCell)
-  createCircle({x: goalCell[0], y: goalCell[1], z: goalCell[2]}, GOAL_NODE)
-  createCircle({x: startCell[0], y: startCell[1], z: startCell[2]}, GOAL_NODE)
-  AsyncPlanner = AsyncAStar.util.createPlanner(map, startCell, goalCell, true, 'manhattan')
+function startHandler() {
+  const scope = Q3D.gui;
+  const weight = scope.parameters.planner.weight;
+  const zDist = Math.floor(15 / 2);
+  const startCell = gpsToCell(threeJStoGPS(global.quad_group.position));
+  let goalCell = gpsToCell(threeJStoGPS(app.queryMarker.position));
+  goalCell[2] = goalCell[2] + zDist;
+  // remove all previous nodes! Also the line path IF it was created
+  NODES.forEach(node => {
+    app.scene.remove(node);
+    node.geometry.dispose();
+  });
+  if (global.path_geometries) {
+    global.path_geometries.forEach(line => {
+      app.scene.remove(line)
+      line.geometry.dispose()
+    })
+  }
+  NODES.clear()
+
+  createPlanner(global.maze, startCell, goalCell, weight);
+}
+function createPlanner(map, startCell, goalCell, weight = 1) {
+  const scope = Q3D.gui;
+  let heuristic = scope.parameters.planner.heuristic
+  createCircle({ x: goalCell[0], y: goalCell[1], z: goalCell[2] }, GOAL_NODE);
+  // createCircle({x: startCell[0], y: startCell[1], z: startCell[2]}, GOAL_NODE)
+  AsyncPlanner = AsyncAStar.util.createPlanner(
+    map,
+    startCell,
+    goalCell,
+    true,
+    heuristic,
+    weight
+  );
 }
 
 function plan() {
   let scope = Q3D.gui;
-  if (scope.parameters.planner && scope.parameters.planner.active && AsyncPlanner) {
+  if (
+    scope.parameters.planner &&
+    scope.parameters.planner.active &&
+    AsyncPlanner
+  ) {
     if (!AsyncPlanner.finished) {
-      let result = AsyncPlanner.searchAsync(1, (node) => updateCircle(node.data), (node) => createCircle(node.data))
-      console.log(result)
+      const scope = Q3D.gui;
+      const speed = Math.floor(scope.parameters.planner.speed);
+      const showNodes = scope.parameters.planner.showNodes
+      // let result = AsyncPlanner.searchAsync(speed);
+      
+      let result = AsyncPlanner.searchAsync(speed, showNodes ? updateCircle : undefined, showNodes ? createCircle : undefined )
+      if (result.status === 2) {
+        console.log(result)
+        if (showNodes) {
+          createPath(result.path);
+        } else {
+          createLinePath(result.path)
+        }
+      }
     }
-
   }
-
 }
 
 module.exports = {
   plan: plan,
+  startHandler: startHandler,
   createPlanner: createPlanner
-}
-
+};
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"@jeremybyu/asyncastar":4}],3:[function(require,module,exports){
+},{"./util":3,"@jeremybyu/asyncastar":4}],3:[function(require,module,exports){
 "use strict";
 // @ts-check
 const SPEED = 0.01;
@@ -693,6 +819,7 @@ function interpolateLine(line_geom, vectors, total_size = 1000) {
   // How many points pairs of vectors
   let interp_calls = vectors.length - 1;
   let points_per_interp_call = Math.floor(total_size / interp_calls);
+  let leftover = (total_size - points_per_interp_call * interp_calls)
   let n = 0;
   for (let index = 0; index < vectors.length - 1; index++) {
     const vectorFrom = vectors[index];
@@ -709,6 +836,12 @@ function interpolateLine(line_geom, vectors, total_size = 1000) {
       positions[n++] = newVec.z;
     }
   }
+  const lastVec  = vectors[vectors.length -1]
+  for (let i = 0; i < leftover; i++) {
+    positions[n++] = lastVec.x
+    positions[n++] = lastVec.y
+    positions[n++] = lastVec.z
+  }
 }
 
 function createBufferLineGeometry(vectors, color = 0x0000ff, linewidth = 2) {
@@ -716,6 +849,7 @@ function createBufferLineGeometry(vectors, color = 0x0000ff, linewidth = 2) {
   // geometry
   var geometry = new THREE.BufferGeometry();
 
+  // const numPoints = vectors.length * 3
   // attributes
   var positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
   geometry.addAttribute("position", new THREE.BufferAttribute(positions, 3));
@@ -920,6 +1054,12 @@ class AsyncAstar {
         path.reverse();
         return path;
     }
+    updateHeuristic(newHeuristicFn) {
+        this.heuristicFn = newHeuristicFn;
+    }
+    updateGenSuccesors(newGenSuccessors) {
+        this.genSuccessorsFn = newGenSuccessors;
+    }
     getAllNodes() {
         return this.nodeSet;
     }
@@ -954,6 +1094,7 @@ function toArrayBuffer(buf) {
 }
 exports.toArrayBuffer = toArrayBuffer;
 const SCALE = 255.0;
+const WEIGHT = 1;
 const ST = 1.0;
 const DG1 = 1.4142135; // root 2
 const DG2 = 1.73025; // root 5
@@ -994,7 +1135,7 @@ function manhattan(a, b) {
 function euclidean(a, b) {
     return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2) + Math.pow(a.z - b.z, 2));
 }
-function genSuccessors(map, allowDiag = true, a) {
+function genSuccessors(map, allowDiag = true, weight = WEIGHT, a) {
     const [width, height, depth] = [map.shape[0], map.shape[1], map.shape[2]];
     const neighbors = [];
     const transitions = [];
@@ -1004,7 +1145,7 @@ function genSuccessors(map, allowDiag = true, a) {
         val = map.get(a.x, a.y - 1, a.z);
         if (val !== SCALE) {
             neighbors.push(new NodeData(a.x, a.y - 1, a.z));
-            transitions.push((1 + val / SCALE) * ST);
+            transitions.push((1 + val / SCALE * weight) * ST);
         }
     }
     // -Y+X TOP-RIGHT
@@ -1012,7 +1153,7 @@ function genSuccessors(map, allowDiag = true, a) {
         val = map.get(a.x + 1, a.y - 1, a.z);
         if (val !== SCALE) {
             neighbors.push(new NodeData(a.x + 1, a.y - 1, a.z));
-            transitions.push((1 + val / SCALE) * DG1);
+            transitions.push((1 + val / SCALE * weight) * DG1);
         }
     }
     // + X RIGHT
@@ -1020,7 +1161,7 @@ function genSuccessors(map, allowDiag = true, a) {
         val = map.get(a.x + 1, a.y, a.z);
         if (val !== SCALE) {
             neighbors.push(new NodeData(a.x + 1, a.y, a.z));
-            transitions.push((1 + val / SCALE) * ST);
+            transitions.push((1 + val / SCALE * weight) * ST);
         }
     }
     // + X + Y RIGHT-BOTTOM
@@ -1028,7 +1169,7 @@ function genSuccessors(map, allowDiag = true, a) {
         val = map.get(a.x + 1, a.y + 1, a.z);
         if (val !== SCALE) {
             neighbors.push(new NodeData(a.x + 1, a.y + 1, a.z));
-            transitions.push((1 + val / SCALE) * DG1);
+            transitions.push((1 + val / SCALE * weight) * DG1);
         }
     }
     // + Y BOTTOM
@@ -1036,7 +1177,7 @@ function genSuccessors(map, allowDiag = true, a) {
         val = map.get(a.x, a.y + 1, a.z);
         if (val !== SCALE) {
             neighbors.push(new NodeData(a.x, a.y + 1, a.z));
-            transitions.push((1 + val / SCALE) * ST);
+            transitions.push((1 + val / SCALE * weight) * ST);
         }
     }
     // + Y - X BOTTOM-LEFT
@@ -1044,7 +1185,7 @@ function genSuccessors(map, allowDiag = true, a) {
         val = map.get(a.x - 1, a.y + 1, a.z);
         if (val !== SCALE) {
             neighbors.push(new NodeData(a.x - 1, a.y + 1, a.z));
-            transitions.push((1 + val / SCALE) * DG1);
+            transitions.push((1 + val / SCALE * weight) * DG1);
         }
     }
     // - X LEFT
@@ -1052,7 +1193,7 @@ function genSuccessors(map, allowDiag = true, a) {
         val = map.get(a.x - 1, a.y, a.z);
         if (val !== SCALE) {
             neighbors.push(new NodeData(a.x - 1, a.y, a.z));
-            transitions.push((1 + val / SCALE) * ST);
+            transitions.push((1 + val / SCALE * weight) * ST);
         }
     }
     // - X - Y LEFT-TOP
@@ -1060,7 +1201,7 @@ function genSuccessors(map, allowDiag = true, a) {
         val = map.get(a.x - 1, a.y - 1, a.z);
         if (val !== SCALE) {
             neighbors.push(new NodeData(a.x - 1, a.y - 1, a.z));
-            transitions.push((1 + val / SCALE) * DG1);
+            transitions.push((1 + val / SCALE * weight) * DG1);
         }
     }
     // 3D Path Planning!
@@ -1071,7 +1212,7 @@ function genSuccessors(map, allowDiag = true, a) {
             val = map.get(a.x, a.y - 1, a.z - 1);
             if (val !== SCALE) {
                 neighbors.push(new NodeData(a.x, a.y - 1, a.z - 1));
-                transitions.push((1 + val / SCALE) * DG1);
+                transitions.push((1 + val / SCALE * weight) * DG1);
             }
         }
         // -Y+X-Z TOP-RIGHT-DOWN
@@ -1079,7 +1220,7 @@ function genSuccessors(map, allowDiag = true, a) {
             val = map.get(a.x + 1, a.y - 1, a.z - 1);
             if (val !== SCALE) {
                 neighbors.push(new NodeData(a.x + 1, a.y - 1, a.z - 1));
-                transitions.push((1 + val / SCALE) * DG2);
+                transitions.push((1 + val / SCALE * weight) * DG2);
             }
         }
         // + X-Z RIGHT DOWN
@@ -1087,7 +1228,7 @@ function genSuccessors(map, allowDiag = true, a) {
             val = map.get(a.x + 1, a.y, a.z - 1);
             if (val !== SCALE) {
                 neighbors.push(new NodeData(a.x + 1, a.y, a.z - 1));
-                transitions.push((1 + val / SCALE) * DG1);
+                transitions.push((1 + val / SCALE * weight) * DG1);
             }
         }
         // + X + Y - Z RIGHT-BOTTOM-DOWN
@@ -1095,7 +1236,7 @@ function genSuccessors(map, allowDiag = true, a) {
             val = map.get(a.x + 1, a.y + 1, a.z - 1);
             if (val !== SCALE) {
                 neighbors.push(new NodeData(a.x + 1, a.y + 1, a.z - 1));
-                transitions.push((1 + val / SCALE) * DG2);
+                transitions.push((1 + val / SCALE * weight) * DG2);
             }
         }
         // + Y -Z BOTTOM-DOWN
@@ -1103,7 +1244,7 @@ function genSuccessors(map, allowDiag = true, a) {
             val = map.get(a.x, a.y + 1, a.z - 1);
             if (val !== SCALE) {
                 neighbors.push(new NodeData(a.x, a.y + 1, a.z - 1));
-                transitions.push((1 + val / SCALE) * DG1);
+                transitions.push((1 + val / SCALE * weight) * DG1);
             }
         }
         // + Y - X -Z BOTTOM-LEFT-DOWN
@@ -1111,7 +1252,7 @@ function genSuccessors(map, allowDiag = true, a) {
             val = map.get(a.x - 1, a.y + 1, a.z - 1);
             if (val !== SCALE) {
                 neighbors.push(new NodeData(a.x - 1, a.y + 1, a.z - 1));
-                transitions.push((1 + val / SCALE) * DG2);
+                transitions.push((1 + val / SCALE * weight) * DG2);
             }
         }
         // - X -Z  LEFT-DOWN
@@ -1119,7 +1260,7 @@ function genSuccessors(map, allowDiag = true, a) {
             val = map.get(a.x - 1, a.y, a.z - 1);
             if (val !== SCALE) {
                 neighbors.push(new NodeData(a.x - 1, a.y, a.z - 1));
-                transitions.push((1 + val / SCALE) * DG1);
+                transitions.push((1 + val / SCALE * weight) * DG1);
             }
         }
         // - X - Y -Z LEFT-TOP-DOWN
@@ -1127,7 +1268,7 @@ function genSuccessors(map, allowDiag = true, a) {
             val = map.get(a.x - 1, a.y - 1, a.z - 1);
             if (val !== SCALE) {
                 neighbors.push(new NodeData(a.x - 1, a.y - 1, a.z - 1));
-                transitions.push((1 + val / SCALE) * DG2);
+                transitions.push((1 + val / SCALE * weight) * DG2);
             }
         }
         // -Z DOWN
@@ -1135,7 +1276,7 @@ function genSuccessors(map, allowDiag = true, a) {
             val = map.get(a.x, a.y, a.z - 1);
             if (val !== SCALE) {
                 neighbors.push(new NodeData(a.x, a.y, a.z - 1));
-                transitions.push((1 + val / SCALE) * ST);
+                transitions.push((1 + val / SCALE * weight) * ST);
             }
         }
         //////// Top of Cube ////////////
@@ -1144,7 +1285,7 @@ function genSuccessors(map, allowDiag = true, a) {
             val = map.get(a.x, a.y - 1, a.z + 1);
             if (val !== SCALE) {
                 neighbors.push(new NodeData(a.x, a.y - 1, a.z + 1));
-                transitions.push((1 + val / SCALE) * DG1);
+                transitions.push((1 + val / SCALE * weight) * DG1);
             }
         }
         // -Y+X-Z TOP-RIGHT-UP
@@ -1152,7 +1293,7 @@ function genSuccessors(map, allowDiag = true, a) {
             val = map.get(a.x + 1, a.y - 1, a.z + 1);
             if (val !== SCALE) {
                 neighbors.push(new NodeData(a.x + 1, a.y - 1, a.z + 1));
-                transitions.push((1 + val / SCALE) * DG2);
+                transitions.push((1 + val / SCALE * weight) * DG2);
             }
         }
         // + X-Z RIGHT UP
@@ -1160,7 +1301,7 @@ function genSuccessors(map, allowDiag = true, a) {
             val = map.get(a.x + 1, a.y, a.z + 1);
             if (val !== SCALE) {
                 neighbors.push(new NodeData(a.x + 1, a.y, a.z + 1));
-                transitions.push((1 + val / SCALE) * DG1);
+                transitions.push((1 + val / SCALE * weight) * DG1);
             }
         }
         // + X + Y + Z RIGHT-BOTTOM-UP
@@ -1168,7 +1309,7 @@ function genSuccessors(map, allowDiag = true, a) {
             val = map.get(a.x + 1, a.y + 1, a.z + 1);
             if (val !== SCALE) {
                 neighbors.push(new NodeData(a.x + 1, a.y + 1, a.z + 1));
-                transitions.push((1 + val / SCALE) * DG2);
+                transitions.push((1 + val / SCALE * weight) * DG2);
             }
         }
         // + Y + Z BOTTOM-UP
@@ -1176,7 +1317,7 @@ function genSuccessors(map, allowDiag = true, a) {
             val = map.get(a.x, a.y + 1, a.z + 1);
             if (val !== SCALE) {
                 neighbors.push(new NodeData(a.x, a.y + 1, a.z + 1));
-                transitions.push((1 + val / SCALE) * DG1);
+                transitions.push((1 + val / SCALE * weight) * DG1);
             }
         }
         // + Y - X -Z BOTTOM-LEFT-UP
@@ -1184,7 +1325,7 @@ function genSuccessors(map, allowDiag = true, a) {
             val = map.get(a.x - 1, a.y + 1, a.z + 1);
             if (val !== SCALE) {
                 neighbors.push(new NodeData(a.x - 1, a.y + 1, a.z + 1));
-                transitions.push((1 + val / SCALE) * DG2);
+                transitions.push((1 + val / SCALE * weight) * DG2);
             }
         }
         // - X -Z  LEFT-UP
@@ -1192,7 +1333,7 @@ function genSuccessors(map, allowDiag = true, a) {
             val = map.get(a.x - 1, a.y, a.z + 1);
             if (val !== SCALE) {
                 neighbors.push(new NodeData(a.x - 1, a.y, a.z + 1));
-                transitions.push((1 + val / SCALE) * DG1);
+                transitions.push((1 + val / SCALE * weight) * DG1);
             }
         }
         // - X - Y -Z LEFT-TOP-UP
@@ -1200,7 +1341,7 @@ function genSuccessors(map, allowDiag = true, a) {
             val = map.get(a.x - 1, a.y - 1, a.z + 1);
             if (val !== SCALE) {
                 neighbors.push(new NodeData(a.x - 1, a.y - 1, a.z + 1));
-                transitions.push((1 + val / SCALE) * DG2);
+                transitions.push((1 + val / SCALE * weight) * DG2);
             }
         }
         // -Z UP
@@ -1208,7 +1349,7 @@ function genSuccessors(map, allowDiag = true, a) {
             val = map.get(a.x, a.y, a.z + 1);
             if (val !== SCALE) {
                 neighbors.push(new NodeData(a.x, a.y, a.z + 1));
-                transitions.push((1 + val / SCALE) * ST);
+                transitions.push((1 + val / SCALE * weight) * ST);
             }
         }
     }
@@ -1217,13 +1358,13 @@ function genSuccessors(map, allowDiag = true, a) {
 function stopFn(a, b) {
     return a.x === b.x && a.y === b.y && a.z === b.z;
 }
-function createPlanner(map, start, goal, allowDiag = true, heuristic = 'manhattan') {
+function createPlanner(map, start, goal, allowDiag = true, heuristic = 'manhattan', weight = WEIGHT) {
     // Spread operator does not work with typescript here (must destructure)... (https://github.com/Microsoft/TypeScript/issues/4130)
     const [sx, sy, sz] = start;
     const [gx, gy, gz] = goal;
     const startNode = new NodeData(sx, sy, sz);
     const goalNode = new NodeData(gx, gy, gz);
-    const genSuccessorsPartial = lodash_partial_1.default(genSuccessors, map, allowDiag);
+    const genSuccessorsPartial = lodash_partial_1.default(genSuccessors, map, allowDiag, weight);
     const heuristicFn = heuristic === 'manhattan' ? manhattan : euclidean;
     const planner = new asyncastar_1.AsyncAstar(startNode, goalNode, hash, genSuccessorsPartial, heuristicFn, stopFn);
     return planner;

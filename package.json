@@ -18,7 +18,7 @@
   "license": "MIT",
   "homepage": "https://bitbucket.org/umich_a2sys/urbanvis#readme",
   "dependencies": {
-    "@jeremybyu/asyncastar": "0.0.9",
+    "@jeremybyu/asyncastar": "0.0.10",
     "ndarray": "^1.0.18",
     "numpy-parser": "^1.0.1"
   },

@@ -24,7 +24,7 @@ const {
   loadNumpy,
 } = require("./util");
 
-const {plan, createPlanner} = require('./planning')
+const {plan, createPlanner, startHandler} = require('./planning')
 
 // These are loaders from THREEJS to load objects, textures, or general files
 const OBJ_LOADER = new THREE.ObjectLoader();
@@ -32,7 +32,8 @@ const TEXTURE_LOADER = new THREE.TextureLoader();
 const FILE_LOADER = new THREE.FileLoader();
 
 // These are the starting coordinates of the UAS in spherical and THREEJS coordinate sytems
-const STARTING_POSITION_SPHERICAL = [7.33364, 51.436723, 133.67];
+// const STARTING_POSITION_SPHERICAL = [7.33364, 51.436723, 133.67];
+const STARTING_POSITION_SPHERICAL = [7.33364, 51.436723, 105];
 let pos = app.project.toThreeJSCoordinates.apply(
   app.project,
   proj4(app.project.proj).forward(STARTING_POSITION_SPHERICAL)
@@ -53,6 +54,8 @@ var path_vectors = [];
 var path_geometries = [];
 var star_group = new THREE.Group();
 var sphere_group = new THREE.Group();
+
+global.star_group = star_group
 
 
 
@@ -250,6 +253,7 @@ async function load_models() {
     quad_group.position.set.apply(quad_group.position, STARTING_POSITION);
     quad_group.add(quad, box, line, db, danger);
     quad_group.scale.set(app.project.scale, app.project.scale, app.project.scale)
+    global.quad_group = quad_group // Set a global variable, ugly but helps out quite a bit
     // add to scene
     app.scene.add(quad_group);
     // make the controls focus on the quad group
@@ -287,9 +291,8 @@ async function load_models() {
     // Everything is now setup to run our animate function.
     window.userAnimateFunction = animateFunction;
 
-    loadNumpy('./custom/data/cost_map.npy').then((data) => {
-      console.log(data)
-      createPlanner(data, STARTING_POSITION_SPHERICAL)
+    loadNumpy('./custom/data/total_bin_mesh_res002.npy').then((data) => {
+      global.maze =data // set global variable
     })
   });
 }
@@ -331,9 +334,13 @@ function addCinemaGUI() {
 
 
   var folder = scope.gui.addFolder("Path Planner");
-  scope.parameters.planner = { speed: 1, active: false};
+  scope.parameters.planner = { speed: 1, active: false, start: startHandler, weight:1, heuristic: "manhattan", showNodes:true };
   
-  folder.add(scope.parameters.planner, "speed", 0, 20, 1).name("Speed");
+  folder.add(scope.parameters.planner, "speed", 0, 100, 1).name("Speed");
+  folder.add(scope.parameters.planner, "weight", 0, 10, 1).name("Avoid Obstacles");
+  folder.add(scope.parameters.planner, "heuristic", ["manhattan", "euclidean"]).name("Heuristic");
+  folder.add(scope.parameters.planner, "showNodes").name("Show Nodes");
+  folder.add(scope.parameters.planner, "start").name("Initialize");
   folder.add(scope.parameters.planner, "active").name("Active");
   // folder.add(scope.parameters.cmd, 'wf').name('Wireframe Mode').onChange(Q3D.application.setWireframeMode);
 }

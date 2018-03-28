@@ -147,3 +147,11 @@ events: [
 
 ```
 
+### Path Planning
+
+The path planner mesh contains information about obstacles. It has has a linearly decaying potential field around obstacles. Unfortunately, this field only goes in the
+the planar direction. In other words you CANT fly close to the side of buidlings, but you can fly close to the tops! Not ideal....
+
+Note that Manhatten distance is **not** admissable, and will lead to non optimal paths.  The Euclidean distance metric is much more computationally expensive.
+
+

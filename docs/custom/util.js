@@ -209,6 +209,7 @@ function interpolateLine(line_geom, vectors, total_size = 1000) {
   // How many points pairs of vectors
   let interp_calls = vectors.length - 1;
   let points_per_interp_call = Math.floor(total_size / interp_calls);
+  let leftover = (total_size - points_per_interp_call * interp_calls)
   let n = 0;
   for (let index = 0; index < vectors.length - 1; index++) {
     const vectorFrom = vectors[index];
@@ -225,6 +226,12 @@ function interpolateLine(line_geom, vectors, total_size = 1000) {
       positions[n++] = newVec.z;
     }
   }
+  const lastVec  = vectors[vectors.length -1]
+  for (let i = 0; i < leftover; i++) {
+    positions[n++] = lastVec.x
+    positions[n++] = lastVec.y
+    positions[n++] = lastVec.z
+  }
 }
 
 function createBufferLineGeometry(vectors, color = 0x0000ff, linewidth = 2) {
@@ -232,6 +239,7 @@ function createBufferLineGeometry(vectors, color = 0x0000ff, linewidth = 2) {
   // geometry
   var geometry = new THREE.BufferGeometry();
 
+  // const numPoints = vectors.length * 3
   // attributes
   var positions = new Float32Array(MAX_POINTS * 3); // 3 vertices per point
   geometry.addAttribute("position", new THREE.BufferAttribute(positions, 3));
