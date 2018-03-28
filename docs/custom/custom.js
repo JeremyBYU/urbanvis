@@ -249,6 +249,7 @@ async function load_models() {
     quad_group = new THREE.Group();
     quad_group.position.set.apply(quad_group.position, STARTING_POSITION);
     quad_group.add(quad, box, line, db, danger);
+    quad_group.scale.set(app.project.scale, app.project.scale, app.project.scale)
     // add to scene
     app.scene.add(quad_group);
     // make the controls focus on the quad group
