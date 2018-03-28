@@ -65,7 +65,7 @@
       "styleWidget2": {
         "comboData": 104, 
         "comboText": "\"height\"", 
-        "editText": "2.5", 
+        "editText": "1", 
         "type": 1
       }, 
       "styleWidget3": {}, 
@@ -106,7 +106,7 @@
       "styleWidget2": {
         "comboData": 103, 
         "comboText": "\"height\"", 
-        "editText": "2.5", 
+        "editText": "1", 
         "type": 1
       }, 
       "styleWidget3": {}, 
@@ -147,7 +147,7 @@
       "styleWidget2": {
         "comboData": 104, 
         "comboText": "\"height\"", 
-        "editText": "2.5", 
+        "editText": "1", 
         "type": 1
       }, 
       "styleWidget3": {}, 

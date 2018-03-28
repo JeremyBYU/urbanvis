@@ -6,6 +6,26 @@
  */
 var app, THREE, quad_group, Q3D;
 
+var THREE = global.THREE
+var Q3D = global.Q3D
+
+var proj4 = global.proj4
+
+var app = Q3D.application;
+app.scene.autoUpdate = true;
+
+const {
+  CinemaEvents,
+  scheduleEvents,
+  promise_object_loader,
+  addPathsToScene,
+  setObjectRotation,
+  createLine,
+  loadNumpy,
+} = require("./util");
+
+const {plan, createPlanner} = require('./planning')
+
 // These are loaders from THREEJS to load objects, textures, or general files
 const OBJ_LOADER = new THREE.ObjectLoader();
 const TEXTURE_LOADER = new THREE.TextureLoader();
@@ -19,20 +39,22 @@ let pos = app.project.toThreeJSCoordinates.apply(
 );
 const STARTING_POSITION = [pos.x, pos.y, pos.z];
 // These are general constants
-const RED_BUILDINGS_LAYER = 1;  // Index of red buildings layer
-const BUILDING_COST_LAYER = 2;  // Index of gradient blue buildings layer
-const ALL_BUILDINGS_LAYER = 3;  // Index of all buildings layer
-const DEFAULT_DELAY = 200;      // A default delay (in ms) used in Cinematic Events
-const STAR_HEIGHT = 2;          // Height in Meters of the "star" above a goal
+const RED_BUILDINGS_LAYER = 1; // Index of red buildings layer
+const BUILDING_COST_LAYER = 2; // Index of gradient blue buildings layer
+const ALL_BUILDINGS_LAYER = 3; // Index of all buildings layer
+const DEFAULT_DELAY = 200; // A default delay (in ms) used in Cinematic Events
+const STAR_HEIGHT = 2; // Height in Meters of the "star" above a goal
+
+const SPEED = 0.01;
+const MAX_POINTS = 1000;
 
 // Just some globals used when creating paths, starts, and spheres
-let path_vectors = [];          
-let path_geometries = [];
-let star_group = new THREE.Group();
-let sphere_group = new THREE.Group();
+var path_vectors = [];
+var path_geometries = [];
+var star_group = new THREE.Group();
+var sphere_group = new THREE.Group();
 
-app = Q3D.application;
-app.scene.autoUpdate = true;
+
 
 // These are all the 'cinema' events
 // They start/finish by either by timers, sequences, or variables reaching some value
@@ -182,7 +204,7 @@ addCinemaGUI();
 // Load all the custom models into the ThreeJS environment
 load_models();
 
-function load_models() {
+async function load_models() {
   // Here we are asynchronously loading all the models, textures, and files that we will need
   let loaded_quad = promise_object_loader("models/uas.json", OBJ_LOADER);
   let loaded_box = promise_object_loader("models/box.json", OBJ_LOADER);
@@ -248,7 +270,7 @@ function load_models() {
       return vec_array;
       // proj4(app.project.proj)
     });
-    addPathsToScene(path_vectors, 0);
+    path_geometries = addPathsToScene(path_vectors, 0);
     addStars(path_vectors, star);
     addSpheres(path_vectors, sphere);
     // Dirty the controller so that theta, phi, and offset states are updated and set.
@@ -263,6 +285,11 @@ function load_models() {
 
     // Everything is now setup to run our animate function.
     window.userAnimateFunction = animateFunction;
+
+    loadNumpy('./custom/data/cost_map.npy').then((data) => {
+      console.log(data)
+      createPlanner(data, STARTING_POSITION_SPHERICAL)
+    })
   });
 }
 
@@ -300,10 +327,18 @@ function addCinemaGUI() {
   scope.parameters.cinema.cinema_timings = cinema_timings;
 
   folder.add(scope.parameters, "active_cinema").name("Active");
+
+
+  var folder = scope.gui.addFolder("Path Planner");
+  scope.parameters.planner = { speed: 1, active: false};
+  
+  folder.add(scope.parameters.planner, "speed", 0, 20, 1).name("Speed");
+  folder.add(scope.parameters.planner, "active").name("Active");
   // folder.add(scope.parameters.cmd, 'wf').name('Wireframe Mode').onChange(Q3D.application.setWireframeMode);
 }
 
 function animateFunction() {
+  plan()
   if (!Q3D.gui.parameters.active_cinema) return;
 
   // animate danger triangle and goal positions
@@ -312,4 +347,5 @@ function animateFunction() {
 
   scheduleEvents(cinema_timings);
   // app.controls.dollyIn(1.1);
+
 }

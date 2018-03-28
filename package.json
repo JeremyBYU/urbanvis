@@ -1,0 +1,28 @@
+{
+  "name": "urban-vis",
+  "version": "1.0.0",
+  "description": "Visualize Urban Environment",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "browserify docs/custom/custom.js -o docs/custom/bundle.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://bitbucket.org/umich_a2sys/urbanvis.git"
+  },
+  "author": "Jeremy Castagno",
+  "license": "MIT",
+  "homepage": "https://bitbucket.org/umich_a2sys/urbanvis#readme",
+  "dependencies": {
+    "@jeremybyu/asyncastar": "0.0.6",
+    "ndarray": "^1.0.18",
+    "numpy-parser": "^1.0.1"
+  },
+  "devDependencies": {
+    "browserify": "^16.1.1"
+  }
+}
