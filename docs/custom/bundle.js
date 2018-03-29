@@ -336,13 +336,13 @@ function addCinemaGUI() {
 
 
   var folder = scope.gui.addFolder("Path Planner");
-  scope.parameters.planner = { speed: 1, active: false, start: startHandler, weight:1, heuristic: "manhattan", showNodes:true };
+  scope.parameters.planner = { speed: 1, active: true, start: startHandler, weight:1, heuristic: "manhattan", showNodes:true };
   
-  folder.add(scope.parameters.planner, "speed", 0, 100, 1).name("Speed");
+  folder.add(scope.parameters.planner, "speed", 0, 1000, 1).name("Speed");
   folder.add(scope.parameters.planner, "weight", 0, 10, 1).name("Avoid Obstacles");
-  folder.add(scope.parameters.planner, "heuristic", ["manhattan", "euclidean"]).name("Heuristic");
+  folder.add(scope.parameters.planner, "heuristic", ["manhattan", "octile", "euclidean"]).name("Heuristic");
   folder.add(scope.parameters.planner, "showNodes").name("Show Nodes");
-  folder.add(scope.parameters.planner, "start").name("Initialize");
+  folder.add(scope.parameters.planner, "start").name("(Re)Start");
   folder.add(scope.parameters.planner, "active").name("Active");
   // folder.add(scope.parameters.cmd, 'wf').name('Wireframe Mode').onChange(Q3D.application.setWireframeMode);
 }
@@ -517,7 +517,7 @@ function createLinePath(path) {
     return new THREE.Vector3(three_c.x, three_c.y, three_c.z)
   });
   vec_array.push(path_vectors)
-  global.path_geometries = addPathsToScene(vec_array, .99);
+  global.path_geometries = addPathsToScene(vec_array, .99, 0xff0000)
 }
 
 // app.project.toMapCoordinates(point.x, point.y, point.z);
@@ -640,9 +640,9 @@ function around(val1, val2, eps = 0.05) {
   return Math.abs(val1 - val2) < eps;
 }
 
-function addPathsToScene(path_vectors, percent = 1) {
+function addPathsToScene(path_vectors, percent = 1, color = 0x0000ff) {
   let path_geometries = path_vectors.map(vectors =>
-    createBufferLineGeometry(vectors)
+    createBufferLineGeometry(vectors, color)
   );
   path_geometries.forEach(line => {
     line.geometry.setDrawRange(
@@ -1097,7 +1097,7 @@ const SCALE = 255.0;
 const WEIGHT = 1;
 const ST = 1.0;
 const DG1 = 1.4142135; // root 2
-const DG2 = 1.73025; // root 5
+const DG2 = 1.73025; // root 3
 function copyNdaray(arr) {
     const arrData = arr.data.slice();
     const newArr = ndarray_1.default(arrData, arr.shape, arr.stride, arr.offset);
@@ -1134,6 +1134,21 @@ function manhattan(a, b) {
 }
 function euclidean(a, b) {
     return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2) + Math.pow(a.z - b.z, 2));
+}
+/**
+ * Octile Distance in 3 Dimensions
+ * From Here: http://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html
+ * @param {any} a
+ * @param {any} b
+ * @returns {number}
+ */
+function octile(a, b) {
+    const dx = Math.abs(a.x - b.x);
+    const dy = Math.abs(a.y - b.y);
+    const dz = Math.abs(a.z - b.z);
+    const order = [dx, dy, dz];
+    order.sort((n, m) => m - n);
+    return order[0] * ST + (DG1 - 1) * order[1] + (DG2 - 1) * order[2];
 }
 function genSuccessors(map, allowDiag = true, weight = WEIGHT, a) {
     const [width, height, depth] = [map.shape[0], map.shape[1], map.shape[2]];
@@ -1365,7 +1380,22 @@ function createPlanner(map, start, goal, allowDiag = true, heuristic = 'manhatta
     const startNode = new NodeData(sx, sy, sz);
     const goalNode = new NodeData(gx, gy, gz);
     const genSuccessorsPartial = lodash_partial_1.default(genSuccessors, map, allowDiag, weight);
-    const heuristicFn = heuristic === 'manhattan' ? manhattan : euclidean;
+    let heuristicFn;
+    switch (heuristic) {
+        case 'manhattan':
+            heuristicFn = manhattan;
+            break;
+        case 'euclidean':
+            heuristicFn = euclidean;
+            break;
+        case 'octile':
+            heuristicFn = octile;
+            break;
+        default:
+            heuristicFn = manhattan;
+            break;
+    }
+    // const heuristicFn = heuristic === 'manhattan' ? manhattan : euclidean;
     const planner = new asyncastar_1.AsyncAstar(startNode, goalNode, hash, genSuccessorsPartial, heuristicFn, stopFn);
     return planner;
 }

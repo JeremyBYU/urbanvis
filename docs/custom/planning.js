@@ -152,7 +152,7 @@ function createLinePath(path) {
     return new THREE.Vector3(three_c.x, three_c.y, three_c.z)
   });
   vec_array.push(path_vectors)
-  global.path_geometries = addPathsToScene(vec_array, .99);
+  global.path_geometries = addPathsToScene(vec_array, .99, 0xff0000)
 }
 
 // app.project.toMapCoordinates(point.x, point.y, point.z);

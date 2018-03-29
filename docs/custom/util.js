@@ -30,9 +30,9 @@ function around(val1, val2, eps = 0.05) {
   return Math.abs(val1 - val2) < eps;
 }
 
-function addPathsToScene(path_vectors, percent = 1) {
+function addPathsToScene(path_vectors, percent = 1, color = 0x0000ff) {
   let path_geometries = path_vectors.map(vectors =>
-    createBufferLineGeometry(vectors)
+    createBufferLineGeometry(vectors, color)
   );
   path_geometries.forEach(line => {
     line.geometry.setDrawRange(
