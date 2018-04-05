@@ -11,12 +11,12 @@ const app = Q3D.application;
 
 const OPEN_NODE = new THREE.MeshPhongMaterial({
   color: 0x4169e1,
-  opacity: 0.4,
+  opacity: 0.1,
   transparent: true
 });
 const CLOSED_NODE = new THREE.MeshPhongMaterial({
   color: 0x808080,
-  opacity: 0.7,
+  opacity: 0.3,
   transparent: true
 });
 const PATH_NODE = new THREE.MeshPhongMaterial({ color: 0xff0000 });
@@ -175,7 +175,8 @@ function gpsToCell(gps) {
 function startHandler() {
   const scope = Q3D.gui;
   const weight = scope.parameters.planner.weight;
-  const zDist = Math.floor(15 / 2);
+  const height = scope.parameters.planner.goal_height
+  const zDist = Math.floor(height / 2);
   const startCell = gpsToCell(threeJStoGPS(global.quad_group.position));
   let goalCell = gpsToCell(threeJStoGPS(app.queryMarker.position));
   goalCell[2] = goalCell[2] + zDist;
@@ -218,7 +219,10 @@ function plan() {
   ) {
     if (!AsyncPlanner.finished) {
       const scope = Q3D.gui;
-      const speed = Math.floor(scope.parameters.planner.speed);
+      let speed = Math.floor(scope.parameters.planner.speed);
+      if (speed > 10) {
+        speed = speed * 10;
+      }
       const showNodes = scope.parameters.planner.showNodes
       // let result = AsyncPlanner.searchAsync(speed);
       

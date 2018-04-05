@@ -336,14 +336,17 @@ function addCinemaGUI() {
 
 
   var folder = scope.gui.addFolder("Path Planner");
-  scope.parameters.planner = { speed: 1, active: true, start: startHandler, weight:1, heuristic: "manhattan", showNodes:true };
+  scope.parameters.planner = { speed: 1, active: true, start: startHandler, weight:1, heuristic: "manhattan", showNodes:true, goal_height: 15 };
   
-  folder.add(scope.parameters.planner, "speed", 0, 1000, 1).name("Speed");
+  folder.add(scope.parameters.planner, "speed", 0, 100, 1).name("Speed");
   folder.add(scope.parameters.planner, "weight", 0, 10, 1).name("Avoid Obstacles");
   folder.add(scope.parameters.planner, "heuristic", ["manhattan", "octile", "euclidean"]).name("Heuristic");
   folder.add(scope.parameters.planner, "showNodes").name("Show Nodes");
   folder.add(scope.parameters.planner, "start").name("(Re)Start");
   folder.add(scope.parameters.planner, "active").name("Active");
+  
+  var folder_misc = scope.gui.addFolder("Misc Parameters");
+  folder_misc.add(scope.parameters.planner, "goal_height", 8, 20, 1).name("Goal height");
   // folder.add(scope.parameters.cmd, 'wf').name('Wireframe Mode').onChange(Q3D.application.setWireframeMode);
 }
 
@@ -376,12 +379,12 @@ const app = Q3D.application;
 
 const OPEN_NODE = new THREE.MeshPhongMaterial({
   color: 0x4169e1,
-  opacity: 0.4,
+  opacity: 0.1,
   transparent: true
 });
 const CLOSED_NODE = new THREE.MeshPhongMaterial({
   color: 0x808080,
-  opacity: 0.7,
+  opacity: 0.3,
   transparent: true
 });
 const PATH_NODE = new THREE.MeshPhongMaterial({ color: 0xff0000 });
@@ -540,7 +543,8 @@ function gpsToCell(gps) {
 function startHandler() {
   const scope = Q3D.gui;
   const weight = scope.parameters.planner.weight;
-  const zDist = Math.floor(15 / 2);
+  const height = scope.parameters.planner.goal_height
+  const zDist = Math.floor(height / 2);
   const startCell = gpsToCell(threeJStoGPS(global.quad_group.position));
   let goalCell = gpsToCell(threeJStoGPS(app.queryMarker.position));
   goalCell[2] = goalCell[2] + zDist;
@@ -583,7 +587,10 @@ function plan() {
   ) {
     if (!AsyncPlanner.finished) {
       const scope = Q3D.gui;
-      const speed = Math.floor(scope.parameters.planner.speed);
+      let speed = Math.floor(scope.parameters.planner.speed);
+      if (speed > 10) {
+        speed = speed * 10;
+      }
       const showNodes = scope.parameters.planner.showNodes
       // let result = AsyncPlanner.searchAsync(speed);
       
@@ -1104,14 +1111,6 @@ function copyNdaray(arr) {
     return newArr;
 }
 exports.copyNdaray = copyNdaray;
-// export function drawPath(arr: ndarray, path: Array<[number, number, number]>): void {
-//   path.forEach(node => {
-//     const [x, y, z] = node
-//     arr.set(x, y, 0, 255)
-//     arr.set(x, y, 1, 0)
-//     arr.set(x, y, 2, 0)
-//   })
-// }
 function hash(node) {
     return `[${node.x}][${node.y}][${node.z}]`;
 }
@@ -1138,8 +1137,8 @@ function euclidean(a, b) {
 /**
  * Octile Distance in 3 Dimensions
  * From Here: http://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html
- * @param {any} a
- * @param {any} b
+ * @param {NodeData} a
+ * @param {NodeData} b
  * @returns {number}
  */
 function octile(a, b) {
@@ -1148,7 +1147,7 @@ function octile(a, b) {
     const dz = Math.abs(a.z - b.z);
     const order = [dx, dy, dz];
     order.sort((n, m) => m - n);
-    return order[0] * ST + (DG1 - 1) * order[1] + (DG2 - 1) * order[2];
+    return order[0] * ST + (DG1 - ST) * order[1] + (DG2 - DG1) * order[2];
 }
 function genSuccessors(map, allowDiag = true, weight = WEIGHT, a) {
     const [width, height, depth] = [map.shape[0], map.shape[1], map.shape[2]];

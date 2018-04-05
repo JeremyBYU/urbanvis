@@ -334,14 +334,17 @@ function addCinemaGUI() {
 
 
   var folder = scope.gui.addFolder("Path Planner");
-  scope.parameters.planner = { speed: 1, active: true, start: startHandler, weight:1, heuristic: "manhattan", showNodes:true };
+  scope.parameters.planner = { speed: 1, active: true, start: startHandler, weight:1, heuristic: "manhattan", showNodes:true, goal_height: 15 };
   
-  folder.add(scope.parameters.planner, "speed", 0, 1000, 1).name("Speed");
+  folder.add(scope.parameters.planner, "speed", 0, 100, 1).name("Speed");
   folder.add(scope.parameters.planner, "weight", 0, 10, 1).name("Avoid Obstacles");
   folder.add(scope.parameters.planner, "heuristic", ["manhattan", "octile", "euclidean"]).name("Heuristic");
   folder.add(scope.parameters.planner, "showNodes").name("Show Nodes");
   folder.add(scope.parameters.planner, "start").name("(Re)Start");
   folder.add(scope.parameters.planner, "active").name("Active");
+  
+  var folder_misc = scope.gui.addFolder("Misc Parameters");
+  folder_misc.add(scope.parameters.planner, "goal_height", 8, 20, 1).name("Goal height");
   // folder.add(scope.parameters.cmd, 'wf').name('Wireframe Mode').onChange(Q3D.application.setWireframeMode);
 }
 
