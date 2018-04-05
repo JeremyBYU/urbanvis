@@ -30,7 +30,7 @@ function around(val1, val2, eps = 0.05) {
   return Math.abs(val1 - val2) < eps;
 }
 
-function addPathsToScene(path_vectors, percent = 1, color = 0x0000ff) {
+function addPathsToScene(path_vectors, percent = 1, color = 0xDAA520) {
   let path_geometries = path_vectors.map(vectors =>
     createBufferLineGeometry(vectors, color)
   );

@@ -33,7 +33,7 @@ const FILE_LOADER = new THREE.FileLoader();
 
 // These are the starting coordinates of the UAS in spherical and THREEJS coordinate sytems
 // const STARTING_POSITION_SPHERICAL = [7.33364, 51.436723, 133.67];
-const STARTING_POSITION_SPHERICAL = [7.33364, 51.436723, 105];
+const STARTING_POSITION_SPHERICAL = [7.33364, 51.436723, 108];
 let pos = app.project.toThreeJSCoordinates.apply(
   app.project,
   proj4(app.project.proj).forward(STARTING_POSITION_SPHERICAL)
@@ -73,7 +73,7 @@ let cinema_timings = {
       name: "initial_zoom",
       variable: "offset",
       amt: 1.02,
-      until: 3.7,
+      until: 20,
       eps: 1
     }),
     new CinemaEvents({
@@ -298,7 +298,7 @@ async function load_models() {
 }
 
 function addStars(path_vectors, star_template) {
-  // Need to add a dummy group around the star so that it can be displaced instead of teh mesh
+  // Need to add a dummy group around the star so that it can be displaced instead of the mesh
   let star_group_template = new THREE.Group();
   star_group_template.add(star_template);
   path_vectors.forEach(path => {
