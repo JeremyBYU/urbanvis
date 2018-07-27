@@ -26,6 +26,9 @@ const {
 
 const {plan, createPlanner, startHandler} = require('./planning')
 
+// const numpy_map = './custom/data/total_bin_mesh_res002.npy'
+const numpy_map = './custom/data/witten_all_pf.npy'
+
 // These are loaders from THREEJS to load objects, textures, or general files
 const OBJ_LOADER = new THREE.ObjectLoader();
 const TEXTURE_LOADER = new THREE.TextureLoader();
@@ -291,7 +294,7 @@ async function load_models() {
     // Everything is now setup to run our animate function.
     window.userAnimateFunction = animateFunction;
 
-    loadNumpy('./custom/data/total_bin_mesh_res002.npy').then((data) => {
+    loadNumpy(numpy_map).then((data) => {
       global.maze =data // set global variable
     })
   });

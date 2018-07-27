@@ -48,8 +48,8 @@ const MAZE_META = {
   ymin: 5699397.285916773,
   zres: 2,
   xres: 2,
-  zmin: 90,
-  nslices: 45,
+  zmin: 93, //90
+  nslices: 40, // 45
   ncols: 797
 };
 
@@ -180,6 +180,17 @@ function startHandler() {
   const startCell = gpsToCell(threeJStoGPS(global.quad_group.position));
   let goalCell = gpsToCell(threeJStoGPS(app.queryMarker.position));
   goalCell[2] = goalCell[2] + zDist;
+  let info = {
+    start:  {
+      cell: startCell.toString(),
+      gps: threeJStoGPS(global.quad_group.position).toString()
+    },
+    goal: {
+      cell: goalCell.toString(),
+      gps: threeJStoGPS(app.queryMarker.position).toString()
+    }
+  }
+  console.table(info)
   // remove all previous nodes! Also the line path IF it was created
   NODES.forEach(node => {
     app.scene.remove(node);

@@ -28,6 +28,9 @@ const {
 
 const {plan, createPlanner, startHandler} = require('./planning')
 
+// const numpy_map = './custom/data/total_bin_mesh_res002.npy'
+const numpy_map = './custom/data/witten_all_pf.npy'
+
 // These are loaders from THREEJS to load objects, textures, or general files
 const OBJ_LOADER = new THREE.ObjectLoader();
 const TEXTURE_LOADER = new THREE.TextureLoader();
@@ -293,7 +296,7 @@ async function load_models() {
     // Everything is now setup to run our animate function.
     window.userAnimateFunction = animateFunction;
 
-    loadNumpy('./custom/data/total_bin_mesh_res002.npy').then((data) => {
+    loadNumpy(numpy_map).then((data) => {
       global.maze =data // set global variable
     })
   });
@@ -416,8 +419,8 @@ const MAZE_META = {
   ymin: 5699397.285916773,
   zres: 2,
   xres: 2,
-  zmin: 90,
-  nslices: 45,
+  zmin: 93, //90
+  nslices: 40, // 45
   ncols: 797
 };
 
@@ -548,6 +551,17 @@ function startHandler() {
   const startCell = gpsToCell(threeJStoGPS(global.quad_group.position));
   let goalCell = gpsToCell(threeJStoGPS(app.queryMarker.position));
   goalCell[2] = goalCell[2] + zDist;
+  let info = {
+    start:  {
+      cell: startCell.toString(),
+      gps: threeJStoGPS(global.quad_group.position).toString()
+    },
+    goal: {
+      cell: goalCell.toString(),
+      gps: threeJStoGPS(app.queryMarker.position).toString()
+    }
+  }
+  console.table(info)
   // remove all previous nodes! Also the line path IF it was created
   NODES.forEach(node => {
     app.scene.remove(node);
@@ -647,7 +661,7 @@ function around(val1, val2, eps = 0.05) {
   return Math.abs(val1 - val2) < eps;
 }
 
-function addPathsToScene(path_vectors, percent = 1, color = 0xFFD700) {
+function addPathsToScene(path_vectors, percent = 1, color = 0xDAA520) {
   let path_geometries = path_vectors.map(vectors =>
     createBufferLineGeometry(vectors, color)
   );
