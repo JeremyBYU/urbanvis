@@ -38,7 +38,7 @@ const FILE_LOADER = new THREE.FileLoader();
 
 // These are the starting coordinates of the UAS in spherical and THREEJS coordinate sytems
 // const STARTING_POSITION_SPHERICAL = [7.33364, 51.436723, 133.67];
-const STARTING_POSITION_SPHERICAL = [7.33364, 51.436723, 108];
+const STARTING_POSITION_SPHERICAL = [7.3357, 51.4373, 125];
 let pos = app.project.toThreeJSCoordinates.apply(
   app.project,
   proj4(app.project.proj).forward(STARTING_POSITION_SPHERICAL)
@@ -48,7 +48,7 @@ const STARTING_POSITION = [pos.x, pos.y, pos.z];
 const RED_BUILDINGS_LAYER = 1; // Index of red buildings layer
 const BUILDING_COST_LAYER = 2; // Index of gradient blue buildings layer
 const ALL_BUILDINGS_LAYER = 3; // Index of all buildings layer
-const DEFAULT_DELAY = 200; // A default delay (in ms) used in Cinematic Events
+const DEFAULT_DELAY = 5000; // A default delay (in ms) used in Cinematic Events
 const STAR_HEIGHT = 2; // Height in Meters of the "star" above a goal
 
 const SPEED = 0.01;
@@ -78,14 +78,14 @@ let cinema_timings = {
       name: "initial_zoom",
       variable: "offset",
       amt: 1.02,
-      until: 20,
+      until: 40,
       eps: 1
     }),
     new CinemaEvents({
       name: "initial_tilt",
       variable: "phi",
       amt: 0.01,
-      until: 0.94
+      until: .95
     }),
     new CinemaEvents({
       name: "activate_danger",
@@ -139,71 +139,71 @@ let cinema_timings = {
       pre_event: "activate_db",
       start_offset: DEFAULT_DELAY
     }),
-    new CinemaEvents({
-      name: "show_red_buidlings",
-      pre_event: "zoom_out_2",
-      customExec: function() {
-        this.counter += 1;
-        app.project.layers[RED_BUILDINGS_LAYER].setOpacity(this.counter / 100);
-        app.project.layers[ALL_BUILDINGS_LAYER].setOpacity(
-          1 - this.counter / 100
-        );
-      },
-      customCheck: function() {
-        return this.counter > 100;
-      },
-      start_offset: DEFAULT_DELAY
-    }),
+    // new CinemaEvents({
+    //   name: "show_red_buidlings",
+    //   pre_event: "zoom_out_2",
+    //   customExec: function() {
+    //     this.counter += 1;
+    //     app.project.layers[RED_BUILDINGS_LAYER].setOpacity(this.counter / 100);
+    //     app.project.layers[ALL_BUILDINGS_LAYER].setOpacity(
+    //       1 - this.counter / 100
+    //     );
+    //   },
+    //   customCheck: function() {
+    //     return this.counter > 100;
+    //   },
+    //   start_offset: DEFAULT_DELAY
+    // }),
     new CinemaEvents({
       name: "show_building_cost",
-      pre_event: "show_red_buidlings",
+      pre_event: "zoom_out_2",
       customExec: function() {
         this.counter += 1;
         app.project.layers[BUILDING_COST_LAYER].setOpacity(this.counter / 100);
       },
       customCheck: function() {
-        return this.counter > 100;
+        return this.counter > 98;
       },
       start_offset: DEFAULT_DELAY
     }),
-    new CinemaEvents({
-      name: "show_goals",
-      pre_event: "show_building_cost",
-      customExec: () => {
-        star_group.visible = true;
-      },
-      customCheck: () => true,
-      start_offset: DEFAULT_DELAY
-    }),
-    new CinemaEvents({
-      name: "draw_paths",
-      pre_event: "show_goals",
-      customExec: function() {
-        if (this.counter === 0) {
-          sphere_group.visible = true;
-        }
-        this.counter = this.counter + 2;
-        path_geometries.forEach((line, index) => {
-          // Set line color
-          const positions = line.geometry.attributes.position.array;
-          const end_line_pos = [
-            positions[this.counter * 3],
-            positions[this.counter * 3 + 1],
-            positions[this.counter * 3 + 2]
-          ];
-          sphere_group.children[index].position.set(
-            end_line_pos[0],
-            end_line_pos[1],
-            end_line_pos[2]
-          );
-          line.geometry.setDrawRange(0, this.counter);
-        });
-      },
-      customCheck: function() {
-        return this.counter > MAX_POINTS - 5;
-      },
-      start_offset: 1000
-    })
+    // new CinemaEvents({
+    //   name: "show_goals",
+    //   pre_event: "show_building_cost",
+    //   customExec: () => {
+    //     star_group.visible = true;
+    //   },
+    //   customCheck: () => true,
+    //   start_offset: DEFAULT_DELAY
+    // }),
+    // new CinemaEvents({
+    //   name: "draw_paths",
+    //   pre_event: "show_goals",
+    //   customExec: function() {
+    //     if (this.counter === 0) {
+    //       sphere_group.visible = true;
+    //     }
+    //     this.counter = this.counter + 2;
+    //     path_geometries.forEach((line, index) => {
+    //       // Set line color
+    //       const positions = line.geometry.attributes.position.array;
+    //       const end_line_pos = [
+    //         positions[this.counter * 3],
+    //         positions[this.counter * 3 + 1],
+    //         positions[this.counter * 3 + 2]
+    //       ];
+    //       sphere_group.children[index].position.set(
+    //         end_line_pos[0],
+    //         end_line_pos[1],
+    //         end_line_pos[2]
+    //       );
+    //       line.geometry.setDrawRange(0, this.counter);
+    //     });
+    //   },
+    //   customCheck: function() {
+    //     return this.counter > MAX_POINTS - 5;
+    //   },
+    //   start_offset: 1000
+    // })
   ]
 };
 
@@ -262,7 +262,7 @@ async function load_models() {
     // add to scene
     app.scene.add(quad_group);
     // make the controls focus on the quad group
-    app.camera.position.set(-2000, -2000, 800);
+    app.camera.position.set(-1000, -1000, 1000);
     app.controls.target = quad_group.position;
 
     // Get the paths to display
